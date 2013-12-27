@@ -1,6 +1,7 @@
 import std.stdio;
 
 import apn.apn;
+import vibe.appmain;
 
 shared static this()
 {
