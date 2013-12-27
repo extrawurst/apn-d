@@ -45,20 +45,18 @@ private:
 	void connect()
 	{
 		auto conn = connectTCP(m_options.address, m_options.port);
-		logInfo("tcp connected");
 
 		auto sslctx = new SSLContext(SSLContextKind.client);
 		sslctx.useCertificateChainFile(m_options.cert);
 		sslctx.usePrivateKeyFile(m_options.key);
-		auto stream = new SSLStream(conn, sslctx, SSLStreamState.connecting);
 
-		logInfo("ssl enabled");
+		auto stream = new SSLStream(conn, sslctx);
 
 		//stream.write("Hello, World!");
 
 		stream.finalize();
 		conn.close();
 
-		logInfo("yeah");
+		logInfo("connected");
 	}
 }
