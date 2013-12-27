@@ -1,11 +1,11 @@
 {
 	"name": "apn-d",
-	"description": "",
+	"description": "Apple Push Notification (apn) service for D using vibe.d (roughly based on node-apn)",
 	"license": "MIT",
 	"copyright": "Copyright © 2013, Stephan",
 	"authors": ["Stephan Dilly"],
 	"dependencies": {
-		"vibe-d": "0.7.18"
+		"vibe-d": "~master"
 	},
 	"versions": ["VibeDefaultMain"]
 }
