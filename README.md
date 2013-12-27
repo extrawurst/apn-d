@@ -1,4 +1,4 @@
 apn-d
 =====
 
-Apple Push Notification in D for vibe.d
+Apple Push Notification (apn) service for D using vibe.d (roughly based on node-apn)
