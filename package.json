@@ -1,0 +1,11 @@
+{
+	"name": "apn-d",
+	"description": "",
+	"license": "MIT",
+	"copyright": "Copyright © 2013, Stephan",
+	"authors": ["Stephan Dilly"],
+	"dependencies": {
+		"vibe-d": "0.7.18"
+	},
+	"versions": ["VibeDefaultMain"]
+}
