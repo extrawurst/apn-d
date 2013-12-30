@@ -1,135 +1,70 @@
 module apn.apn;
 
-import vibe.core.core;
-import vibe.core.log;
-import vibe.core.net;
-import vibe.stream.ssl;
+import apn.connection;
+import apn.binarynotification;
+public import apn.settings;
+public import apn.notification;
 
 ///
-class APNNotification
+class ObjectPool(T, alias Func)
 {
+	private T[] m_list;
+
+	///
+	public T pop()
+	{
+		if(m_list.length > 0)
+		{
+			T result = m_list[$-1];
+			m_list.length = 0;
+			return result;
+		}
+
+		return Func();
+	}
+
+	///
+	public void push(T _obj)
+	{
+		m_list ~= _obj;
+	}
 }
 
 ///
-class APNConnection
+class APNSystem
 {
+	private immutable APNSettings	m_options;
+
 private:
-	Options			m_options;
-	TCPConnection	m_tcp;
-	SSLStream		m_sslStream;
-	ubyte[]			m_receiveBuff;
+	alias ObjectPool!(BinaryNotification, createNewNotification) Notifications;
+
+	int				m_notificationId;
+	APNConnection	m_connection;
+	Notifications	m_notifications = new Notifications();
 
 public:
 
 	///
-	@property bool isConnected() const {return m_sslStream !is null && m_tcp !is null;}
-
-	///
-	struct Options
-	{
-		string cert = "cert.pem";
-		string key = "key.pem";
-		string address = "gateway.push.apple.com";
-		ushort port = 2195;
-	}
-
-	///
-	this(Options _options)
+	this(APNSettings _options)
 	{
 		m_options = _options;
 
-		connect();
+		m_connection = new APNConnection(m_options);
 	}
 
 	///
-	void shutdown()
+	void pushNotification(APNNotification _msg, string _device)
 	{
-		m_sslStream.finalize();
-		m_tcp.close();
+		auto binNotify = m_notifications.pop();
 
-		m_tcp = null;
-		m_sslStream = null;
+		binNotify.update(_msg,m_notificationId++,_device);
+
+		m_connection.send(binNotify);
 	}
 
 	///
-	void pushNotification(APNNotification _msg, string[] _devices)
+	private static BinaryNotification createNewNotification()
 	{
-		
-	}
-
-private:
-
-	///
-	void connect()
-	{
-		m_tcp = connectTCP(m_options.address, m_options.port);
-
-		auto sslctx = new SSLContext(SSLContextKind.client);
-		sslctx.useCertificateChainFile(m_options.cert);
-		sslctx.usePrivateKeyFile(m_options.key);
-
-		m_sslStream = new SSLStream(m_tcp, sslctx);
-
-		logInfo("connected");
-
-		runTask(&receive);
-
-		runTask((){
-			logInfo("start sending");
-
-			while(isConnected)
-			{
-				tryWrite("foo");
-				
-				logInfo("wrote");
-
-				yield();
-			}
-		});
-	}
-
-	///
-	void tryWrite(T)(T _data)
-	{
-		try m_sslStream.write(_data);
-		catch(Exception e)
-		{
-			logError("writing error: %s",e);
-
-			shutdown();
-		}
-	}
-
-	///
-	void receive()
-	{
-		scope(failure) 
-		{
-			logInfo("[apn] received -> shutdown");
-
-			shutdown();
-
-			yield();
-		}
-
-		logInfo("start receiving");
-
-		while(isConnected)
-		{
-			if(m_sslStream.dataAvailableForRead)
-			{
-				m_receiveBuff.length = cast(uint)m_sslStream.leastSize();
-				
-				m_sslStream.read(m_receiveBuff);
-
-				logError("got data: %s",m_receiveBuff);
-
-				throw new Exception("apn just sends data if there was something wrong");
-			}
-
-			//logInfo("tried reveice");
-
-			yield();
-		}
+		return new BinaryNotification();
 	}
 }
