@@ -1,0 +1,2 @@
+dub generate visuald
+PAUSE
