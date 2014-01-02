@@ -1,23 +1,31 @@
 module apn.binarynotification;
 
+import std.array;
+import std.bitmanip;
+
 import apn.notification;
+
+import vibe.d:logInfo;
 
 align(1) struct FrameHeader
 {
+	align(1):
 	ubyte command;
-	int frameLength;
+	ubyte[4] frameLength;
 }
 
 align(1) struct ItemHeader
 {
+	align(1):
 	ubyte itemId;
-	ushort itemDataLength;
+	ubyte[2] itemDataLength;
 }
 
 align(1) struct NotificationEnd
 {
-	int id;
-	int expiration;
+	align(1):
+	uint id;
+	uint expiration;
 	ubyte priority;
 }
 
@@ -33,32 +41,47 @@ class BinaryNotification
 	@property int id() const { return m_id; }
 
 	///
-	void update(APNNotification _notification, int _id, string _device)
+	void update(APNNotification _notification, int _id, ubyte[] _device)
 	{
 		m_id = _id;
 
 		auto payload = _notification.payloadToString();
 		assert(payload.length <= 256);
 
-		auto itemDataLength = cast(ushort)(payload.length + 32 + payload.length + 32 + NotificationEnd.sizeof);
+		auto itemDataLength = cast(ushort)(_device.length + payload.length + NotificationEnd.sizeof);
 		auto frameLength = ItemHeader.sizeof + itemDataLength;
 		m_data.length = FrameHeader.sizeof + frameLength;
 
 		FrameHeader* frameHeader = cast(FrameHeader*)&m_data[0];
 		frameHeader.command = 2;
-		frameHeader.frameLength = frameLength;
-
-		ItemHeader* itemHeader = cast(ItemHeader*)&m_data[3];
+		frameHeader.frameLength = nativeToBigEndian(frameLength);
+		
+		ItemHeader* itemHeader = cast(ItemHeader*)&m_data[FrameHeader.sizeof];
 		itemHeader.itemId = 0;
-		itemHeader.itemDataLength = itemDataLength;
-
-		auto payloadStart = FrameHeader.sizeof + ItemHeader.sizeof;
+		itemHeader.itemDataLength = nativeToBigEndian(itemDataLength);
+		
+		auto idStart = FrameHeader.sizeof + ItemHeader.sizeof;
+		auto idEnd = idStart + 32;
+		
+		m_data[idStart..idEnd] = _device[];
+		
+		auto payloadStart = idEnd;
 		auto payloadEnd = payloadStart + payload.length;
 		m_data[payloadStart..payloadEnd] = (cast(ubyte[])payload)[];
-
+		
 		NotificationEnd* notifyEnd = cast(NotificationEnd*)&m_data[payloadEnd];
 		notifyEnd.id = _id;
 		notifyEnd.expiration = 0;
 		notifyEnd.priority = 10;
+
+		logInfo("data: '%s'", m_data);
+
+		//auto buffer = appender!(const ubyte[])();
+		//buffer.append!ubyte(2);				//command
+		//buffer.append!uint(frameLength);
+		//
+		//buffer.put(_device);
+		//
+		//m_data = buffer.data;
 	}
 }

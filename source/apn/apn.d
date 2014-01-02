@@ -64,11 +64,11 @@ public:
 	 + 	_msg	= the message
 	 + 	_device	= the target device token
 	 +/
-	void pushNotification(APNNotification _msg, string _device)
+	void pushNotification(APNNotification _msg, ubyte[] _device)
 	{
 		auto binNotify = m_notifications.pop();
 
-		binNotify.update(_msg,m_notificationId++,_device);
+		binNotify.update(_msg, m_notificationId++, _device);
 
 		m_connection.send(binNotify);
 	}
