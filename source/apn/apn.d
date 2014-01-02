@@ -44,7 +44,12 @@ private:
 
 public:
 
-	///
+	/++
+	 + constructor
+	 + 
+	 + Params:
+	 + 	_options	= configuration
+	 +/
 	this(APNSettings _options)
 	{
 		m_options = _options;
@@ -52,7 +57,13 @@ public:
 		m_connection = new APNConnection(m_options);
 	}
 
-	///
+	/++
+	 + Pushes out a single notification to a single device target.
+	 + 
+	 + Params:
+	 + 	_msg	= the message
+	 + 	_device	= the target device token
+	 +/
 	void pushNotification(APNNotification _msg, string _device)
 	{
 		auto binNotify = m_notifications.pop();
