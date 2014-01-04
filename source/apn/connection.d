@@ -95,10 +95,7 @@ private:
 							logInfo("error on reading error: %s",e);
 					}
 
-					logError("got error: %s",m_receiveBuff);
-
-					//TODO:
-					//parseError(m_receiveBuff);
+					parseError(m_receiveBuff);
 
 					shutdown();
 
@@ -107,6 +104,30 @@ private:
 			}
 
 			yield();
+		}
+	}
+
+	///
+	void parseError(ubyte[] _buffer)
+	{
+		import std.bitmanip:read;
+
+		//logInfo("result error: %s", _buffer);
+
+		if(_buffer.length > 0)
+		{
+			auto cmd = _buffer.read!ubyte;
+		
+			if(cmd == 8)
+			{
+				auto status = _buffer.read!ubyte;
+		
+				auto id = _buffer.read!uint;
+		
+				logError("result error! status: %s id: %s", status, id);
+			}
+			else
+				logError("got unknown result error: %s", _buffer);
 		}
 	}
 
