@@ -1,5 +1,7 @@
 module apn.apn;
 
+import vibe.d;
+
 import apn.connection;
 import apn.binarynotification;
 public import apn.settings;
@@ -39,7 +41,7 @@ private:
 	alias ObjectPool!(BinaryNotification, createNewNotification) Notifications;
 
 	int				m_notificationId;
-	APNConnection	m_connection;
+	APNConnection[]	m_connections;
 	Notifications	m_notifications = new Notifications();
 
 public:
@@ -54,7 +56,11 @@ public:
 	{
 		m_options = _options;
 
-		m_connection = new APNConnection(m_options);
+		foreach(i; 0..m_options.maxConnections)
+		{
+			auto newConn = new APNConnection(m_options);
+			m_connections ~= newConn;
+		}
 	}
 
 	/++
@@ -70,11 +76,50 @@ public:
 
 		binNotify.update(_msg, m_notificationId++, _device);
 
-		m_connection.send(binNotify);
+		auto connection = getConnection();
+
+		connection.send(binNotify);
+	}
+
+private:
+
+	///
+	APNConnection getConnection()
+	{
+		foreach(conn; m_connections)
+		{
+			if(!conn.isBusy)
+				return conn;
+		}
+
+		if(m_connections.length < m_options.maxConnections)
+		{
+			auto newConn = new APNConnection(m_options);
+
+			m_connections ~= newConn;
+
+			logInfo("new connection created");
+
+			return newConn;
+		}
+
+		// wait for signal here
+		int i=0;
+		while(true)
+		{
+			if(!m_connections[i].isBusy)
+				return m_connections[i];
+
+			i++;
+			if(i >= m_connections.length)
+				i=0;
+
+			sleep(10.msecs);
+		}
 	}
 
 	///
-	private static BinaryNotification createNewNotification()
+	static BinaryNotification createNewNotification()
 	{
 		return new BinaryNotification();
 	}

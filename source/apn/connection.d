@@ -22,6 +22,8 @@ public:
 
 	///
 	@property bool isConnected() const {return m_sslStream !is null && m_tcp !is null;}
+	///
+	@property bool isBusy() const { return m_current !is null; }
 
 	///
 	this(APNSettings _options)
@@ -34,6 +36,12 @@ public:
 	///
 	void send(BinaryNotification _msg)
 	{
+		if(isBusy)
+		{
+			logError("trying to use busy connection");
+			return;
+		}
+
 		m_current = _msg;
 
 		runTask(&sendTask);
@@ -134,19 +142,15 @@ private:
 	///
 	void sendTask()
 	{
-		logInfo("sendTask");
-
 		if(m_current !is null)
 		{
-			logInfo("sending %s bytes", m_current.data.length);
+			//logInfo("sending %s bytes", m_current.data.length);
 
 			m_sslStream.write(m_current.data);
 
 			m_sent ~= m_current;
 
 			m_current = null;
-
-			logInfo("...done");
 		}
 	}
 }
