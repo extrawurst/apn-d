@@ -26,7 +26,7 @@ class BinaryNotification
 		auto payload = _notification.payloadToString();
 		assert(payload.length <= 256);
 
-		auto frameLength = _device.length + payload.length + (4*3) + 9;
+		auto frameLength = _device.length + payload.length + (5*3) + 9;
 
 		auto buffer = appender!(const ubyte[])();
 
@@ -38,7 +38,7 @@ class BinaryNotification
 
 		buffer.append!ubyte(1);
 		buffer.append!ushort(32);
-		buffer.put(_device);
+		buffer.put(_device);		
 
 		buffer.append!ubyte(2);
 		buffer.append!ushort(cast(ushort)payload.length);
