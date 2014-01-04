@@ -7,32 +7,10 @@ import apn.notification;
 
 import vibe.d:logInfo;
 
-align(1) struct FrameHeader
-{
-	align(1):
-	ubyte command;
-	ubyte[4] frameLength;
-}
-
-align(1) struct ItemHeader
-{
-	align(1):
-	ubyte itemId;
-	ubyte[2] itemDataLength;
-}
-
-align(1) struct NotificationEnd
-{
-	align(1):
-	uint id;
-	uint expiration;
-	ubyte priority;
-}
-
 ///
 class BinaryNotification
 {
-	ubyte[] m_data;
+	const(ubyte)[] m_data;
 	int m_id;
 
 	///
@@ -48,40 +26,36 @@ class BinaryNotification
 		auto payload = _notification.payloadToString();
 		assert(payload.length <= 256);
 
-		auto itemDataLength = cast(ushort)(_device.length + payload.length + NotificationEnd.sizeof);
-		auto frameLength = ItemHeader.sizeof + itemDataLength;
-		m_data.length = FrameHeader.sizeof + frameLength;
+		auto frameLength = _device.length + payload.length + (4*3) + 9;
 
-		FrameHeader* frameHeader = cast(FrameHeader*)&m_data[0];
-		frameHeader.command = 2;
-		frameHeader.frameLength = nativeToBigEndian(frameLength);
-		
-		ItemHeader* itemHeader = cast(ItemHeader*)&m_data[FrameHeader.sizeof];
-		itemHeader.itemId = 0;
-		itemHeader.itemDataLength = nativeToBigEndian(itemDataLength);
-		
-		auto idStart = FrameHeader.sizeof + ItemHeader.sizeof;
-		auto idEnd = idStart + 32;
-		
-		m_data[idStart..idEnd] = _device[];
-		
-		auto payloadStart = idEnd;
-		auto payloadEnd = payloadStart + payload.length;
-		m_data[payloadStart..payloadEnd] = (cast(ubyte[])payload)[];
-		
-		NotificationEnd* notifyEnd = cast(NotificationEnd*)&m_data[payloadEnd];
-		notifyEnd.id = _id;
-		notifyEnd.expiration = 0;
-		notifyEnd.priority = 10;
+		auto buffer = appender!(const ubyte[])();
 
-		logInfo("data: '%s'", m_data);
+		//frame header
+		buffer.append!ubyte(2);				//command
+		buffer.append!uint(frameLength);
+		
+		//items
 
-		//auto buffer = appender!(const ubyte[])();
-		//buffer.append!ubyte(2);				//command
-		//buffer.append!uint(frameLength);
-		//
-		//buffer.put(_device);
-		//
-		//m_data = buffer.data;
+		buffer.append!ubyte(1);
+		buffer.append!ushort(32);
+		buffer.put(_device);
+
+		buffer.append!ubyte(2);
+		buffer.append!ushort(cast(ushort)payload.length);
+		buffer.put(cast(ubyte[])payload);
+
+		buffer.append!ubyte(3);
+		buffer.append!ushort(4);
+		buffer.append!uint(_id);
+
+		buffer.append!ubyte(4);
+		buffer.append!ushort(4);
+		buffer.append!uint(_notification.expiration);
+
+		buffer.append!ubyte(5);
+		buffer.append!ushort(1);
+		buffer.append!ubyte(_notification.priority==APNNotification.Priority.Prio10 ? 10 : 5);
+		
+		m_data = buffer.data;
 	}
 }
